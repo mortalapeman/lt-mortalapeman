@@ -1,0 +1,2 @@
+{:+ {:app [(:lt.objs.plugins/load-js "user_compiled.js")]
+     :user.hello [:lt.plugins.user/on-close-destroy]}}
