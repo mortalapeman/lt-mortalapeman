@@ -1,6 +1,6 @@
-{:name "user"
+{:name "mortalapeman"
  :version "0.0.1"
  :author ""
  :source ""
  :desc ""
- :behaviors "user.behaviors"}
+ :behaviors "mortalapeman.behaviors"}
