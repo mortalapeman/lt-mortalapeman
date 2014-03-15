@@ -5,6 +5,13 @@
             [lt.objs.command :as cmd])
   (:require-macros [lt.macros :refer [defui behavior]]))
 
+(behavior ::sidebar-menu-items
+          :triggers #{:menu-items}
+          :reaction (fn [this items]
+                      (conj items {:label "Create new workspace"
+                                   :click (fn []
+                                            (cmd/exec! :workspace.new))})))
+
 (cmd/command {:command :tabset.close-all-but-active
               :desc "Tabset: Close all tabs/tabsets except active"
               :exec (fn []

@@ -1,1 +1,2 @@
-{:+ {:app [(:lt.objs.plugins/load-js "mortalapeman_compiled.js")]}}
+{:+ {:app [(:lt.objs.plugins/load-js "mortalapeman_compiled.js")]
+     :sidebar.workspace [:lt.plugins.mortalapeman/sidebar-menu-items]}}
