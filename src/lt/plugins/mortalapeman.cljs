@@ -19,16 +19,16 @@
                       (conj items
                             {:type "separator"
                              :order 3}
-                            {:label "Close all tabs"
-                             :order 4
-                             :click (fn [] (cmd/exec! :tabs.close-all))}
                             {:label "Close tabs to the right"
                              :order 4
                              :click (fn [] (cmd/exec! :tabset.close-tabs-to-right this))}
                             {:label "Close other tabs"
                              :order 5
                              :click (fn []
-                                      (cmd/exec! :tabset.close-other-tabs this))})))
+                                      (cmd/exec! :tabset.close-other-tabs this))}
+                            {:label "Close all tabs"
+                             :order 6
+                             :click (fn [] (cmd/exec! :tabs.close-all))})))
 
 
 (cmd/command {:command :tabset.close-other-tabs
