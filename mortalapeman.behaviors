@@ -1,3 +1,3 @@
 {:+ {:app [(:lt.objs.plugins/load-js "mortalapeman_compiled.js")]
      :sidebar.workspace [:lt.plugins.mortalapeman/sidebar-menu-items]
-     :tabset.tab [:lt.plugins.mortalapeman/tab-menu-items]}}
+     :tab-label [:lt.plugins.mortalapeman/tab-menu-items]}}

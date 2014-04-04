@@ -13,7 +13,7 @@
                                             (cmd/exec! :workspace.new))})))
 
 (behavior ::tab-menu-items
-          :triggers #{:tab-menu-items}
+          :triggers #{:menu+}
           :reaction (fn [this items]
                       (do this)
                       (conj items
