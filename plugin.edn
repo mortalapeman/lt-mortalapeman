@@ -3,5 +3,5 @@
  :author ""
  :source ""
  :desc ""
- ;;:dependencies {:Rolex "0.2.0"}
+ :dependencies {:Rolex "0.1.0"}
  :behaviors "mortalapeman.behaviors"}
