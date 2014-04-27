@@ -1,3 +1,7 @@
-{:+ {:app [(:lt.objs.plugins/load-js "mortalapeman_compiled.js")]
+{:+ {:app [(:lt.objs.plugins/load-js "mortalapeman_compiled.js")
+           ;; Connect to Light Table on startup
+           (:lt.objs.app/run-post-init :app.connect-to-lt-ui)]
      :sidebar.workspace [:lt.plugins.mortalapeman/sidebar-menu-items]
-     :tab-label [:lt.plugins.mortalapeman/tab-menu-items]}}
+     :tab-label [:lt.plugins.mortalapeman/tab-menu-items]}
+ ;; Remove main menu as it causes problems on Windows machine's with alt shortcuts
+ :- {:app [:lt.objs.menu/create-menu]}}
