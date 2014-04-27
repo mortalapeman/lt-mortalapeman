@@ -2,6 +2,7 @@
   (:require [lt.object :as object]
             [lt.objs.context :as ctx]
             [lt.objs.tabs :as tabs]
+            [lt.objs.clients.local :as local]
             [lt.objs.command :as cmd])
   (:require-macros [lt.macros :refer [defui behavior]]))
 
@@ -21,11 +22,11 @@
                              :order 3}
                             {:label "Close tabs to the right"
                              :order 4
-                             :click (fn [] (cmd/exec! :tabset.close-tabs-to-right this))}
+                             :click (fn [] (cmd/exec! :tabset.close-tabs-to-right (:lt.objs.tabs/tab-object @this)))}
                             {:label "Close other tabs"
                              :order 5
                              :click (fn []
-                                      (cmd/exec! :tabset.close-other-tabs this))}
+                                      (cmd/exec! :tabset.close-other-tabs (:lt.objs.tabs/tab-object @this)))}
                             {:label "Close all tabs"
                              :order 6
                              :click (fn [] (cmd/exec! :tabs.close-all))})))
@@ -64,3 +65,9 @@
                           (object/raise x :close))
                         (doseq [x (filter (comp not #{active-tabset}) tabsets)]
                           (tabs/rem-tabset x))))})
+
+
+(cmd/command {:command :app.connect-to-lt-ui
+              :desc "Connect: Connect to Light Table UI"
+              :exec (fn []
+                      (local/init))})
