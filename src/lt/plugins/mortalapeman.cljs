@@ -31,6 +31,25 @@
                              :order 6
                              :click (fn [] (cmd/exec! :tabs.close-all))})))
 
+(defn open-powershel [path]
+  (let [cp (js/require "child_process")]
+    (.spawn cp "powershell" ["-noexit" "-command" "\"cd '" path "'\""])))
+
+(defn open-gnome-terminal [path]
+  (let [cp (js/require "child_process")]
+    (.spawn cp "gnome-terminal" #js [(str "--working-directory=" path)])))
+
+(behavior ::subfolder-menu.open-gnome-termial
+          :triggers #{:menu-items}
+          :reaction (fn [this items]
+                      (conj items
+                            {:label "Open Terminal Here"
+                             :order 7
+                             :click (fn []
+                                      (condp = process.platform
+                                        "linux" (open-gnome-terminal (:path @this))
+                                        "win32" (open-powershel (:path @this))))})))
+
 
 (cmd/command {:command :tabset.close-other-tabs
               :desc "Tabset: Close other tabs and tabsets"
