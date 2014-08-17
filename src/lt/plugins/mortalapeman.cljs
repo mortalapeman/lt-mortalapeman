@@ -18,10 +18,13 @@
     (seq v)
     (map-indexed vector v)))
 
-(defn branch? [[k v]]
+(defn branchable? [v]
   (or (map? v)
       (sequential? v)
       (set? v)))
+
+(defn branch? [[k v]]
+  (branchable? v))
 
 (defn make-node [[k v] children]
   (if (map? v)
@@ -48,19 +51,41 @@
     (if-let [d (zip/down z)]
       (go-right d d))))
 
+(defn type-name [v]
+  (cond
+   (map? v) "Map"
+   (vector? v) "Vector"
+   (list? v) "List"
+   (set? v) "Set"
+   (atom? v) "Atom"
+   (string? v) "String"
+   (keyword? v) "Keyword"
+   (number? v) "Number"
+   :else "?"))
+
+(defn generic-value-display [v cnt]
+  (let [s (pr-str v)
+        f (apply str (take cnt s))
+        r (drop cnt s)]
+    (if (seq r)
+      (str f " ..")
+      f)))
+
+
+(defn value-display [v]
+  (cond
+   (branchable? v) (type-name v)
+   (string? v) v
+   (keyword? v) v
+   (number? v) v
+   :else (generic-value-display v 80)))
 
 (defn display-summary [[k v]]
-  (let [value-display (cond
-                       (map? v) "Map"
-                       (vector? v) "Vector"
-                       (list? v) "List"
-                       (set? v) "Set"
-                       (atom? v) "Atom"
-                       :else (str (apply str (take 120  (pr-str v)))))
-        key-display (if (number? k)
-                      (str "[" k "]")
-                      (pr-str k))]
-    (str key-display " " value-display)))
+  (let [vd (value-display v)
+        kd (if (number? k)
+             (str "[" k "]")
+             (pr-str k))]
+    (str kd " " vd)))
 
 (defui display-str [this z]
   [:span.display (display-summary (zip/node z))]
