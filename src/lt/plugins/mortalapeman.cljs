@@ -56,11 +56,11 @@
                        (list? v) "List"
                        (set? v) "Set"
                        (atom? v) "Atom"
-                       :else (str v))
+                       :else (str (apply str (take 120  (pr-str v)))))
         key-display (if (number? k)
                       (str "[" k "]")
-                      k)]
-    (str k " " value-display)))
+                      (pr-str k))]
+    (str key-display " " value-display)))
 
 (defui display-str [this z]
   [:span.display (display-summary (zip/node z))]
@@ -82,7 +82,8 @@
                         [:div.obj-node
                          (display-str this (:zipper @this))]))
 
-(def demo (object/create ::obj.browser.node {:asdf 1 :woot [1 2 3]}))
+(def demo (object/create ::obj.browser.node {:asdf 1 :woot [1 2 3] :editor (atom ['a 'b 'c])}))
+;;(def demo (object/create ::obj.browser.node (deref (first (object/by-tag :editor)))))
 
 (behavior ::toggle-children
           :triggers #{:click}
