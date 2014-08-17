@@ -31,15 +31,11 @@
                              :order 6
                              :click (fn [] (cmd/exec! :tabs.close-all))})))
 
-(defn open-powershel [path]
-  (let [cp (js/require "child_process")]
-    (.spawn cp "powershell" ["-noexit" "-command" "\"cd '" path "'\""])))
-
 (defn open-gnome-terminal [path]
   (let [cp (js/require "child_process")]
     (.spawn cp "gnome-terminal" #js [(str "--working-directory=" path)])))
 
-(behavior ::subfolder-menu.open-gnome-termial
+(behavior ::subfolder-menu
           :triggers #{:menu-items}
           :reaction (fn [this items]
                       (conj items
@@ -47,8 +43,7 @@
                              :order 7
                              :click (fn []
                                       (condp = process.platform
-                                        "linux" (open-gnome-terminal (:path @this))
-                                        "win32" (open-powershel (:path @this))))})))
+                                        "linux" (open-gnome-terminal (:path @this))))})))
 
 
 (cmd/command {:command :tabset.close-other-tabs
