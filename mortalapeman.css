@@ -1,0 +1,11 @@
+.obj-node {
+  position: relative;
+}
+
+.obj-node .children {
+  position: absolute;
+  margin-left: 18px;
+}
+
+.obj-node .display {
+}

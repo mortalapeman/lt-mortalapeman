@@ -3,8 +3,138 @@
             [lt.objs.context :as ctx]
             [lt.objs.tabs :as tabs]
             [lt.objs.clients.local :as local]
-            [lt.objs.command :as cmd])
+            [lt.objs.command :as cmd]
+            [clojure.zip :as zip]
+            [lt.util.dom :as dom])
   (:require-macros [lt.macros :refer [defui behavior]]))
+
+(defn atom? [x]
+  (boolean
+   (when x
+     (instance? Atom x))))
+
+(defn children [[k v]]
+  (if (map? v)
+    (seq v)
+    (map-indexed vector v)))
+
+(defn branch? [[k v]]
+  (or (map? v)
+      (sequential? v)
+      (set? v)))
+
+(defn make-node [[k v] children]
+  (if (map? v)
+    (into v children)
+    (into v (map second children))))
+
+(defn zipper? [obj]
+  (contains? (meta obj) :zip/make-node))
+
+(defn zip-obj [obj]
+  (zip/zipper branch? children make-node [:root obj]))
+
+(defn ->zip-obj [obj]
+  (if (zipper? obj)
+    obj
+    (zip-obj obj)))
+
+(defn zchildren [z]
+  (letfn [(go-right [z n]
+                    (cons n
+                          (lazy-seq
+                           (if-let [r (zip/right z)]
+                             (go-right r r)))))]
+    (if-let [d (zip/down z)]
+      (go-right d d))))
+
+
+(defn display-summary [[k v]]
+  (let [value-display (cond
+                       (map? v) "Map"
+                       (vector? v) "Vector"
+                       (list? v) "List"
+                       (set? v) "Set"
+                       (atom? v) "Atom"
+                       :else (str v))
+        key-display (if (number? k)
+                      (str "[" k "]")
+                      k)]
+    (str k " " value-display)))
+
+(defui display-str [this z]
+  [:span.display (display-summary (zip/node z))]
+  :click (fn [e] (object/raise this :click)))
+
+(defui create-children [this children]
+  [:div.children
+   (for [c children]
+     (object/->content c))])
+
+(object/object* ::obj.browser.node
+                :tags #{:obj.browser.node}
+                :behaviors [::toggle-children]
+                :zipper nil
+                :open false
+                :children nil
+                :init (fn [this obj]
+                        (object/merge! this {:zipper (->zip-obj obj)})
+                        [:div.obj-node
+                         (display-str this (:zipper @this))]))
+
+(def demo (object/create ::obj.browser.node {:asdf 1 :woot [1 2 3]}))
+
+(behavior ::toggle-children
+          :triggers #{:click}
+          :reaction (fn [this]
+                      (if (:open @this)
+                        (do
+                          (doseq [x (:children @this)]
+                            (object/destroy! x))
+                          (->> (object/->content this)
+                               (dom/$ :.children)
+                               (dom/remove))
+                          (object/merge! this {:open false}))
+                        (let [div (object/->content this)
+                              children (map #(object/create ::obj.browser.node %)
+                                            (zchildren (:zipper @this)))]
+                          (dom/append div (create-children this children))
+                          (object/merge! this {:open true
+                                               :children children})))))
+
+(object/object* ::object.browser
+                :tags #{:object.browser :tab :tabset.tab}
+                :behaviors [::on-close]
+                :name "LT Objects"
+                :init (fn [this]
+                        [:div.obj-root
+                         (object/->content demo)]))
+
+(def browser (object/create ::object.browser))
+
+(behavior ::on-close
+          :triggers #{:close}
+          :reaction (fn [this]
+                      (tabs/rem! this)))
+
+(cmd/command {:command :object.browse
+              :desc "Objects: open browser"
+              :exec (fn []
+                      (tabs/add-or-focus! browser))})
+
+
+
+(comment
+  (def data [:root {:asdf ['a 'b {:args 1}] :woot {:qwer 2} :blergs "fruity"}])
+  (def blah (zip/zipper branch?
+                        children
+                        make-node
+                        data)))
+
+
+;;*****************************************************************************
+;; Menus
+;;*****************************************************************************
 
 (behavior ::sidebar-menu-items
           :triggers #{:menu-items}
