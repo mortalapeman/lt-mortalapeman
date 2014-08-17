@@ -13,15 +13,41 @@
    (when x
      (instance? Atom x))))
 
+(defn zipper? [obj]
+  (contains? (meta obj) :zip/make-node))
+
+(defn type-name [v]
+  (cond
+   (zipper? v) "Zipper"
+   (atom? v) "Atom"
+   (map? v) "Map"
+   (vector? v) "Vector"
+   (list? v) "List"
+   (set? v) "Set"
+   (string? v) "String"
+   (keyword? v) "Keyword"
+   (number? v) "Number"
+   (nil? v) "nil"
+   (fn? v) "Function"
+   (symbol? v) "Symbol"
+   :else "?"))
+
+(defn type-key [v]
+  (-> (type-name v)
+      (.toLowerCase)
+      keyword))
+
 (defn children [[k v]]
-  (if (map? v)
-    (seq v)
+  (condp = (type-name v)
+    "Map" (seq v)
+    "Atom" [[::atom @v]]
     (map-indexed vector v)))
 
 (defn branchable? [v]
   (or (map? v)
       (sequential? v)
-      (set? v)))
+      (set? v)
+      (and (atom? v))))
 
 (defn branch? [[k v]]
   (branchable? v))
@@ -31,8 +57,6 @@
     (into v children)
     (into v (map second children))))
 
-(defn zipper? [obj]
-  (contains? (meta obj) :zip/make-node))
 
 (defn zip-obj [obj]
   (zip/zipper branch? children make-node [:root obj]))
@@ -51,17 +75,6 @@
     (if-let [d (zip/down z)]
       (go-right d d))))
 
-(defn type-name [v]
-  (cond
-   (map? v) "Map"
-   (vector? v) "Vector"
-   (list? v) "List"
-   (set? v) "Set"
-   (atom? v) "Atom"
-   (string? v) "String"
-   (keyword? v) "Keyword"
-   (number? v) "Number"
-   :else "?"))
 
 (defn generic-value-display [v cnt]
   (let [s (pr-str v)
@@ -71,13 +84,14 @@
       (str f " ..")
       f)))
 
-
 (defn value-display [v]
   (cond
+   (atom? v) (str "#<" (type-name v) ": " (type-name @v) ">")
    (branchable? v) (type-name v)
    (string? v) v
    (keyword? v) v
    (number? v) v
+   (symbol? v) v
    :else (generic-value-display v 80)))
 
 (defn display-summary [[k v]]
@@ -85,7 +99,9 @@
         kd (if (number? k)
              (str "[" k "]")
              (pr-str k))]
-    (str kd " " vd)))
+    (if (= k ::atom)
+      vd
+      (str kd " " vd))))
 
 (defui display-str [this z]
   [:span.display (display-summary (zip/node z))]
