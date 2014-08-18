@@ -6,7 +6,8 @@
             [lt.objs.command :as cmd]
             [clojure.zip :as zip]
             [lt.util.dom :as dom]
-            [crate.core :as crate])
+            [crate.core :as crate]
+            [crate.binding :refer [bound subatom]])
   (:require-macros [lt.macros :refer [defui behavior]]))
 
 
@@ -107,13 +108,15 @@
    :else :other))
 
 (defmulti display-string node-value-type)
+
 (defmethod display-string :branchable [x]
   (if (atom? x)
     (str "#<" (type-name x) ": " (type-name @x) ">")
     (type-name x)))
-(defmethod display-string :value [x] (pr-str x))
-(defmethod display-string :other [x] (simple-display x 80))
 
+(defmethod display-string :value [x] (pr-str x))
+
+(defmethod display-string :other [x] (simple-display x 80))
 
 (def type-key->class {:keyword "cm-atom"
                       :number "cm-number"
@@ -130,10 +133,10 @@
 
 (defn key->span [k]
   [:span.node-key
-   (if (number? k)
-     (str "[" k "]")
-     (value->span k))])
-
+   (cond
+    (number? k) (str "[" k "]")
+    (nil? k) "[0]"
+    :else (value->span k))])
 
 (defn display-summary [[k v]]
   (let [vd (value->span v)
@@ -146,13 +149,13 @@
   [:span.display (display-summary (zip/node z))]
   :click (fn [e] (object/raise this :click)))
 
-(defn bnode-key [bnode]
-  (let [[k _] (zip/node (:zipper @bnode))]
+(defn node-key [node]
+  (let [[k _] (zip/node (:zipper @node))]
     k))
 
 (defui create-children [this children]
   [:div.children
-   (for [c (sort-by bnode-key children)]
+   (for [c (sort-by node-key children)]
      (object/->content c))])
 
 (object/object* ::obj.browser.node
@@ -167,10 +170,6 @@
                                              :parent parent})
                         [:div.obj-node
                          (display-zipper this (:zipper @this))]))
-
-;;(def demo (object/create ::obj.browser.node {:asdf 1 :woot [1 2 3] :editor (atom ['a 'b 'c])}))
-(do (def demo (object/create ::obj.browser.node nil (deref (first (object/by-tag :editor)))))
-  nil)
 
 (behavior ::toggle-children
           :triggers #{:click :toggle}
@@ -190,17 +189,35 @@
                           (object/merge! this {:open true
                                                :children children})))))
 
+(behavior ::set-object
+          :triggers #{:set!}
+          :reaction (fn [this obj]
+                      (when-let [old (:obj this)]
+                        (object/destroy! old))
+                      (object/merge! this {:obj (object/create ::obj.browser.node nil obj)})
+                      (object/raise (:obj @this) :toggle)))
+
+(defui browserui [this]
+  [:div
+   (bound (subatom this [:obj])
+          (fn [v]
+            (if (and v @v)
+              (object/->content v)
+              [:span "No object selected"])))])
+
 (object/object* ::object.browser
                 :tags #{:object.browser :tab :tabset.tab}
-                :behaviors [::on-close]
-                :name "LT Objects"
-                :init (fn [this title]
-                        (object/raise demo :toggle)
+                :behaviors [::on-close ::set-object]
+                :name "Object Viewer"
+                :obj nil
+                :init (fn [this n]
+                        (when title
+                          (object/merge! this {:name n}))
                         [:div.obj-root
-                         [:h3 title
-                          (object/->content demo)]]))
+                         [:h1 "Object name here"]
+                          (browserui this)]))
 
-(def browser (object/create ::object.browser "Editor Object"))
+(def browser (object/create ::object.browser))
 
 (behavior ::on-close
           :triggers #{:close}
@@ -208,18 +225,24 @@
                       (tabs/rem! this)))
 
 (cmd/command {:command :object.browse
-              :desc "Objects: open browser"
+              :desc "Object: open browser"
               :exec (fn []
                       (tabs/add-or-focus! browser))})
 
+(cmd/command {:command :object.browser.set!
+              :desc "Object: set object"
+              :hidden true
+              :exec (fn [obj]
+                      (object/raise browser :set! obj))})
 
+;;*****************************************************************************
+;; Alpeh
+;;*****************************************************************************
 
-(comment
-  (def data [:root {:asdf ['a 'b {:args 1}] :woot {:qwer 2} :blergs "fruity"}])
-  (def blah (zip/zipper branch?
-                        children
-                        make-node
-                        data)))
+(behavior ::on-select
+          :triggers #{:select}
+          :reaction (fn [_ obj]
+                      (cmd/exec! :object.browser.set! (object/by-id (object/->id obj)))))
 
 
 ;;*****************************************************************************
