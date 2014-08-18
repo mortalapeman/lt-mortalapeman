@@ -90,6 +90,13 @@
 ;; Display
 ;;*****************************************************************************
 
+(defn simple-display [v cnt]
+  (let [s (pr-str v)
+        f (apply str (take cnt s))
+        r (drop cnt s)]
+    (if (seq r)
+      (str f " ..")
+      f)))
 
 (defn node-value-type [v]
   (cond
@@ -97,12 +104,24 @@
    (values (type-key v)) :value
    :else :other))
 
+(defmulti display-string node-value-type)
+(defmethod display-string :branchable [x]
+  (if (atom? x)
+    (str "#<" (type-name x) ": " (type-name @x) ">")
+    (type-name x)))
+(defmethod display-string :value [x] (pr-str x))
+(defmethod display-string :other [x] (simple-display x 80))
 
-(def type-key->class {:keyword :cm-atom
-                      :number :cm-number})
+
+(def type-key->class {:keyword "cm-atom"
+                      :number "cm-number"})
+(defn display-span [v]
+  (str "span."
+       (get type-key->class (type-key v) "unknown")))
 
 (defn value->span [v]
-  [(keyword (str "span." (name (get type-key->class (type-key v) "unknown")))) v])
+  [(keyword (display-span v))
+   (display-string v)])
 
 (value->span :asdf)
 
@@ -111,14 +130,6 @@
 
 
 
-
-(defn generic-value-display [v cnt]
-  (let [s (pr-str v)
-        f (apply str (take cnt s))
-        r (drop cnt s)]
-    (if (seq r)
-      (str f " ..")
-      f)))
 
 (defn value-display [v]
   (cond

@@ -3,6 +3,7 @@
 }
 .obj-node {
   position: relative;
+  cursor: default;
 }
 
 .obj-node .children {
@@ -10,4 +11,15 @@
 }
 
 .obj-node .display {
+  min-width: 100px;
+  display: inline-block;
+  border: 1px solid transparent;
+}
+
+.obj-node .display:hover {
+  background-color: #D4D4D4;
+  color: #474747;
+  font-weight: 800;
+  border: 1px solid #D4D4D4;
+  border-radius: 3px;
 }
