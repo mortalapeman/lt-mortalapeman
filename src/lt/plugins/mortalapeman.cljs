@@ -5,8 +5,10 @@
             [lt.objs.clients.local :as local]
             [lt.objs.command :as cmd]
             [clojure.zip :as zip]
-            [lt.util.dom :as dom])
+            [lt.util.dom :as dom]
+            [crate.core :as crate])
   (:require-macros [lt.macros :refer [defui behavior]]))
+
 
 ;;*****************************************************************************
 ;; Utility
@@ -114,43 +116,33 @@
 
 
 (def type-key->class {:keyword "cm-atom"
-                      :number "cm-number"})
+                      :number "cm-number"
+                      :string "cm-string"
+                      :symbol "cm-symbol"})
 (defn display-span [v]
   (str "span."
-       (get type-key->class (type-key v) "unknown")))
+       (get type-key->class (type-key v) "cm-builtin")))
 
 (defn value->span [v]
   [(keyword (display-span v))
    (display-string v)])
 
-(value->span :asdf)
 
+(defn key->span [k]
+  [:span.node-key
+   (if (number? k)
+     (str "[" k "]")
+     (value->span k))])
 
-
-
-
-
-
-(defn value-display [v]
-  (cond
-   (atom? v) (str "#<" (type-name v) ": " (type-name @v) ">")
-   (branchable? v) (type-name v)
-   (string? v) (pr-str v)
-   (keyword? v) (pr-str v)
-   (number? v) (pr-str v)
-   (symbol? v) (pr-str v)
-   :else (generic-value-display v 80)))
 
 (defn display-summary [[k v]]
-  (let [vd (value-display v)
-        kd (if (number? k)
-             (str "[" k "]")
-             (pr-str k))]
+  (let [vd (value->span v)
+        kd (key->span k)]
     (if (= k ::atom)
-      vd
-      (str kd " " vd))))
+      [:span.cm-s-default vd]
+      [:span.cm-s-default kd " " vd])))
 
-(defui display-str [this z]
+(defui display-zipper [this z]
   [:span.display (display-summary (zip/node z))]
   :click (fn [e] (object/raise this :click)))
 
@@ -174,10 +166,11 @@
                         (object/merge! this {:zipper (->zip-obj obj)
                                              :parent parent})
                         [:div.obj-node
-                         (display-str this (:zipper @this))]))
+                         (display-zipper this (:zipper @this))]))
 
 ;;(def demo (object/create ::obj.browser.node {:asdf 1 :woot [1 2 3] :editor (atom ['a 'b 'c])}))
-(def demo (object/create ::obj.browser.node nil (deref (first (object/by-tag :editor)))))
+(do (def demo (object/create ::obj.browser.node nil (deref (first (object/by-tag :editor)))))
+  nil)
 
 (behavior ::toggle-children
           :triggers #{:click :toggle}
