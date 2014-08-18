@@ -8,6 +8,10 @@
             [lt.util.dom :as dom])
   (:require-macros [lt.macros :refer [defui behavior]]))
 
+;;*****************************************************************************
+;; Utility
+;;*****************************************************************************
+
 (defn atom? [x]
   (boolean
    (when x
@@ -29,7 +33,9 @@
    (number? v) "Number"
    (nil? v) "nil"
    (fn? v) "Function"
+   (array? v) "Array"
    (symbol? v) "Symbol"
+   (seq? v) "Seq"
    :else "?"))
 
 (defn type-key [v]
@@ -37,17 +43,22 @@
       (.toLowerCase)
       keyword))
 
+
+;;*****************************************************************************
+;; Zipper
+;;*****************************************************************************
+
+(def branchable #{:map :set :atom :vector :list :seq})
+(def values #{:symbol :string :number :nil :keyword})
+
 (defn children [[k v]]
-  (condp = (type-name v)
-    "Map" (seq v)
-    "Atom" [[::atom @v]]
+  (condp = (type-key v)
+    :map (seq v)
+    :atom [[::atom @v]]
     (map-indexed vector v)))
 
 (defn branchable? [v]
-  (or (map? v)
-      (sequential? v)
-      (set? v)
-      (and (atom? v))))
+  (branchable (type-key v)))
 
 (defn branch? [[k v]]
   (branchable? v))
@@ -56,7 +67,6 @@
   (if (map? v)
     (into v children)
     (into v (map second children))))
-
 
 (defn zip-obj [obj]
   (zip/zipper branch? children make-node [:root obj]))
@@ -67,13 +77,39 @@
     (zip-obj obj)))
 
 (defn zchildren [z]
-  (letfn [(go-right [z n]
-                    (cons n
-                          (lazy-seq
-                           (if-let [r (zip/right z)]
-                             (go-right r r)))))]
+  (letfn [(go-right
+           [z n]
+           (cons n
+                 (lazy-seq
+                  (if-let [r (zip/right z)]
+                    (go-right r r)))))]
     (if-let [d (zip/down z)]
       (go-right d d))))
+
+;;*****************************************************************************
+;; Display
+;;*****************************************************************************
+
+
+(defn node-value-type [v]
+  (cond
+   (branchable? v) :branchable
+   (values (type-key v)) :value
+   :else :other))
+
+
+(def type-key->class {:keyword :cm-atom
+                      :number :cm-number})
+
+(defn value->span [v]
+  [(keyword (str "span." (name (get type-key->class (type-key v) "unknown")))) v])
+
+(value->span :asdf)
+
+
+
+
+
 
 
 (defn generic-value-display [v cnt]
@@ -88,10 +124,10 @@
   (cond
    (atom? v) (str "#<" (type-name v) ": " (type-name @v) ">")
    (branchable? v) (type-name v)
-   (string? v) v
-   (keyword? v) v
-   (number? v) v
-   (symbol? v) v
+   (string? v) (pr-str v)
+   (keyword? v) (pr-str v)
+   (number? v) (pr-str v)
+   (symbol? v) (pr-str v)
    :else (generic-value-display v 80)))
 
 (defn display-summary [[k v]]
@@ -107,9 +143,13 @@
   [:span.display (display-summary (zip/node z))]
   :click (fn [e] (object/raise this :click)))
 
+(defn bnode-key [bnode]
+  (let [[k _] (zip/node (:zipper @bnode))]
+    k))
+
 (defui create-children [this children]
   [:div.children
-   (for [c children]
+   (for [c (sort-by bnode-key children)]
      (object/->content c))])
 
 (object/object* ::obj.browser.node
@@ -117,17 +157,19 @@
                 :behaviors [::toggle-children]
                 :zipper nil
                 :open false
+                :parent nil
                 :children nil
-                :init (fn [this obj]
-                        (object/merge! this {:zipper (->zip-obj obj)})
+                :init (fn [this parent obj]
+                        (object/merge! this {:zipper (->zip-obj obj)
+                                             :parent parent})
                         [:div.obj-node
                          (display-str this (:zipper @this))]))
 
-(def demo (object/create ::obj.browser.node {:asdf 1 :woot [1 2 3] :editor (atom ['a 'b 'c])}))
-;;(def demo (object/create ::obj.browser.node (deref (first (object/by-tag :editor)))))
+;;(def demo (object/create ::obj.browser.node {:asdf 1 :woot [1 2 3] :editor (atom ['a 'b 'c])}))
+(def demo (object/create ::obj.browser.node nil (deref (first (object/by-tag :editor)))))
 
 (behavior ::toggle-children
-          :triggers #{:click}
+          :triggers #{:click :toggle}
           :reaction (fn [this]
                       (if (:open @this)
                         (do
@@ -138,7 +180,7 @@
                                (dom/remove))
                           (object/merge! this {:open false}))
                         (let [div (object/->content this)
-                              children (map #(object/create ::obj.browser.node %)
+                              children (map #(object/create ::obj.browser.node this %)
                                             (zchildren (:zipper @this)))]
                           (dom/append div (create-children this children))
                           (object/merge! this {:open true
@@ -148,11 +190,13 @@
                 :tags #{:object.browser :tab :tabset.tab}
                 :behaviors [::on-close]
                 :name "LT Objects"
-                :init (fn [this]
+                :init (fn [this title]
+                        (object/raise demo :toggle)
                         [:div.obj-root
-                         (object/->content demo)]))
+                         [:h3 title
+                          (object/->content demo)]]))
 
-(def browser (object/create ::object.browser))
+(def browser (object/create ::object.browser "Editor Object"))
 
 (behavior ::on-close
           :triggers #{:close}
