@@ -1,10 +1,14 @@
 {:+ {:app [(:lt.objs.plugins/load-js "mortalapeman_compiled.js")
            (:lt.objs.plugins/load-css "mortalapeman.css")
+
            ;; Connect to Light Table on startup
            (:lt.objs.app/run-post-init :app.connect-to-lt-ui)]
      :sidebar.workspace [:lt.plugins.mortalapeman/sidebar-menu-items]
      :tab-label [:lt.plugins.mortalapeman/tab-menu-items]
      :workspace.folder [:lt.plugins.mortalapeman/subfolder-menu]
-     :aleph.selector [:lt.plugins.mortalapeman/on-select]}
+     :aleph.selector [:lt.plugins.mortalapeman/on-select]
+     :editor.cljs [:lt.plugins.mortalapeman/browser.editor-result]
+     :editor.clj [:lt.plugins.mortalapeman/browser.editor-result]}
+
  ;; Remove main menu as it causes problems on Windows machine's with alt shortcuts
  :- {:app [:lt.objs.menu/create-menu]}}

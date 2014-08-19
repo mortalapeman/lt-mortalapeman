@@ -4,12 +4,14 @@
             [lt.objs.tabs :as tabs]
             [lt.objs.clients.local :as local]
             [lt.objs.command :as cmd]
-            [clojure.zip :as zip]
             [lt.util.dom :as dom]
+            [cljs.reader :as reader]
+            [clojure.zip :as zip]
+            [clojure.walk :as walk]
+            [clojure.string :as string]
             [crate.core :as crate]
             [crate.binding :refer [bound subatom]])
   (:require-macros [lt.macros :refer [defui behavior]]))
-
 
 ;;*****************************************************************************
 ;; Utility
@@ -205,19 +207,31 @@
               (object/->content v)
               [:span "No object selected"])))])
 
+(defui toggle-button [this]
+  [:button "Toggle Capture"]
+  :click (fn [] (object/merge! this {:capture (not (:capture @this))})))
+
 (object/object* ::object.browser
                 :tags #{:object.browser :tab :tabset.tab}
                 :behaviors [::on-close ::set-object]
                 :name "Object Viewer"
                 :obj nil
+                :capture false
                 :init (fn [this n]
                         (when title
                           (object/merge! this {:name n}))
                         [:div.obj-root
                          [:h1 "Object name here"]
-                          (browserui this)]))
+                         [:div
+                          (toggle-button this)
+                          [:span
+                           (bound (subatom this [:capture]) (fn [v] (if v "On" "Off")))]]
+                         (browserui this)]))
+
 
 (def browser (object/create ::object.browser))
+
+;; (object/create ::object.browser)
 
 (behavior ::on-close
           :triggers #{:close}
@@ -244,6 +258,60 @@
           :reaction (fn [_ obj]
                       (cmd/exec! :object.browser.set! (object/by-id (object/->id obj)))))
 
+;;*****************************************************************************
+;; Edtior
+;;*****************************************************************************
+
+;; Gross
+(def atom-re #"#<Atom: ([\(\[\$\{#][\[\],\+\./'\"#<>:\w\{\}\s-]+[\]\}\)]|[\$,\+\./\"'#:\w\s-]+)>")
+(def other-re #"#<([\(\[\{#][\$\[\],\+\./'\"#<>:\w\{\}\s-]+[\]\}\)]|[\$,\+\./\"'#:\w\s-]+)>")
+
+(defn atom-str? [s]
+  (and (string? s)
+       (boolean (re-find atom-re s))))
+
+(defn other-str? [s]
+  (and (string? s)
+       (boolean (re-find other-re s))))
+
+(defn atom-str-value [s]
+  (-> (re-find atom-re s)
+      second))
+
+(defn santize-pr-str [s]
+  (cond
+   (atom-str? s) (string/replace s atom-re quote-string)
+   (other-str? s) (string/replace s other-re quote-string)
+   :else s))
+
+(defn post-process [obj]
+  (letfn [(parse [v]
+                 (cond
+                  (atom-str? v) (atom (->> (atom-str-value v)
+                                           (santize-pr-str)
+                                           (reader/read-string)
+                                           post-process))
+                  (other-str? v) (quote-string v)
+                  :else v))]
+    (if (string? obj)
+      (walk/postwalk parse (parse obj))
+      (walk/postwalk parse obj))))
+
+(def result-value (atom nil))
+
+;; (santize-pr-str @result-value)
+
+;; (atom {:asdf [1 2 3 {:qoot "blergs"}]})
+
+(behavior ::browser.editor-result
+          :triggers #{:editor.result}
+          :reaction (fn [this result loc opts]
+                      (when (:capture @browser)
+                        (reset! result-value result)
+                        (object/merge! browser {:capture false})
+                        (cmd/exec! :object.browser.set! (-> (santize-pr-str result)
+                                                            reader/read-string
+                                                            post-process)))))
 
 ;;*****************************************************************************
 ;; Menus
