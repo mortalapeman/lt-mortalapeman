@@ -5,6 +5,8 @@
             [lt.objs.clients.local :as local]
             [lt.objs.command :as cmd]
             [lt.util.dom :as dom]
+            [goog.object :as gobj]
+            [goog :as goog]
             [cljs.reader :as reader]
             [clojure.zip :as zip]
             [clojure.walk :as walk]
@@ -25,6 +27,9 @@
 (defn zipper? [obj]
   (contains? (meta obj) :zip/make-node))
 
+(defn obj? [o]
+  (goog/isObject o))
+
 (defn type-name [v]
   (cond
    (zipper? v) "Zipper"
@@ -41,6 +46,7 @@
    (array? v) "Array"
    (symbol? v) "Symbol"
    (seq? v) "Seq"
+   (obj? v) "JSObject"
    :else "?"))
 
 (defn type-key [v]
@@ -53,13 +59,14 @@
 ;; Zipper
 ;;*****************************************************************************
 
-(def branchable #{:map :set :atom :vector :list :seq})
+(def branchable #{:map :set :atom :vector :list :seq :jsobject :array})
 (def values #{:symbol :string :number :nil :keyword})
 
 (defn children [[k v]]
   (condp = (type-key v)
     :map (seq v)
     :atom [[::atom @v]]
+    :jsobject (map vector (gobj/getKeys v) (gobj/getValues v))
     (map-indexed vector v)))
 
 (defn branchable? [v]
@@ -238,12 +245,12 @@
                       (tabs/rem! this)))
 
 (cmd/command {:command :object.browse
-              :desc "Object: open browser"
+              :desc "Data Viewer: open viewer"
               :exec (fn []
                       (tabs/add-or-focus! browser))})
 
 (cmd/command {:command :object.browser.set!
-              :desc "Object: set object"
+              :desc "Data Viewer: set data"
               :hidden true
               :exec (fn [obj]
                       (object/raise browser :set! obj))})
