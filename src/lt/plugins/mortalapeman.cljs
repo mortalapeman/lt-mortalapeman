@@ -211,17 +211,17 @@
   [:button "Toggle Capture"]
   :click (fn [] (object/merge! this {:capture (not (:capture @this))})))
 
+
 (object/object* ::object.browser
                 :tags #{:object.browser :tab :tabset.tab}
                 :behaviors [::on-close ::set-object]
-                :name "Object Viewer"
+                :name "Data Viewer"
                 :obj nil
                 :capture false
                 :init (fn [this n]
                         (when title
                           (object/merge! this {:name n}))
                         [:div.obj-root
-                         [:h1 "Object name here"]
                          [:div
                           (toggle-button this)
                           [:span
@@ -231,7 +231,6 @@
 
 (def browser (object/create ::object.browser))
 
-;; (object/create ::object.browser)
 
 (behavior ::on-close
           :triggers #{:close}
@@ -262,9 +261,68 @@
 ;; Edtior
 ;;*****************************************************************************
 
-;; Gross
-(def atom-re #"#<Atom: ([\(\[\$\{#][\[\],\+\./'\"#<>:\w\{\}\s-]+[\]\}\)]|[\$,\+\./\"'#:\w\s-]+)>")
-(def other-re #"#<([\(\[\{#][\$\[\],\+\./'\"#<>:\w\{\}\s-]+[\]\}\)]|[\$,\+\./\"'#:\w\s-]+)>")
+(defn find-unreadable-forms [s]
+  (loop [state {:capture [] :final [] :#? false :level 0}
+         c (first (seq s))
+         r (rest (seq s))]
+    (let [prevHash? (:#? state)
+          c-is-hash (= "#" c)
+          c-is-start (= "<" c)
+          c-is-end (= ">" c)
+          next-c (first r)
+          next-r (rest r)]
+      (cond
+
+       ;; We have reached the end of the stream
+       (nil? c)
+       (:final state)
+
+       ;; We have found a #
+       (and c-is-hash  (not prevHash?))
+       (recur (assoc state :#? true) next-c next-r)
+
+       ;; The next character after a # was not a <
+       (and (not c-is-start) prevHash?)
+       (recur (assoc state :#? false) next-c next-r)
+
+       ;; The next character after a # was a <, start capture.
+       (and c-is-start prevHash?)
+       (recur (-> (assoc state :#? false)
+                  (update-in [:capture] conj "#<")
+                  (update-in [:level] inc))
+              next-c
+              next-r)
+
+       ;; We are still inside a #<...>
+       (and (< 0 (:level state)) (not c-is-end))
+       (recur (update-in state [:capture] conj c)
+              next-c
+              next-r)
+
+       ;; We have reached the end of the first #<...>
+       (and (and (= 1 (:level state)) c-is-end))
+       (recur (-> (update-in state [:final] conj (apply str (conj (:capture state) c)))
+                  (update-in [:level] dec)
+                  (assoc :capture []))
+              next-c
+              next-r)
+
+       ;; We have reached the end of a #<..>, but we are still inside the first #<...>
+       (and (< 1 (:level state)) c-is-end)
+       (recur (-> (update-in state [:capture] conj c)
+                  (update-in [:level] dec))
+              next-c
+              next-r)
+
+       ;; We are not inside a #<...>
+       (and (= 0 (:level state )) (not prevHash?))
+       (recur state next-c next-r)
+
+       ;; We missed a state somewhere
+       :else nil))))
+
+(def atom-re #"^#<Atom: (.+)>$")
+(def other-re #"^#<.+>$")
 
 (defn atom-str? [s]
   (and (string? s)
@@ -279,35 +337,29 @@
       second))
 
 (defn santize-pr-str [s]
-  (cond
-   (atom-str? s) (string/replace s atom-re quote-string)
-   (other-str? s) (string/replace s other-re quote-string)
-   :else s))
+  (let [bad-strs (find-unreadable-forms s)
+        sanitize (fn [a n]
+                  (string/replace a n (quote-string n)))]
+    (reduce sanitize s bad-strs)))
 
 (defn post-process [obj]
-  (letfn [(parse [v]
-                 (cond
-                  (atom-str? v) (atom (->> (atom-str-value v)
-                                           (santize-pr-str)
-                                           (reader/read-string)
-                                           post-process))
-                  (other-str? v) (quote-string v)
-                  :else v))]
+  (letfn [(parse
+           [v]
+           (if (atom-str? v)
+             (atom (->> (atom-str-value v)
+                        (santize-pr-str)
+                        (reader/read-string)
+                        post-process))
+             v))]
     (if (string? obj)
       (walk/postwalk parse (parse obj))
       (walk/postwalk parse obj))))
 
-(def result-value (atom nil))
-
-;; (santize-pr-str @result-value)
-
-;; (atom {:asdf [1 2 3 {:qoot "blergs"}]})
 
 (behavior ::browser.editor-result
           :triggers #{:editor.result}
           :reaction (fn [this result loc opts]
                       (when (:capture @browser)
-                        (reset! result-value result)
                         (object/merge! browser {:capture false})
                         (cmd/exec! :object.browser.set! (-> (santize-pr-str result)
                                                             reader/read-string
