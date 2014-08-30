@@ -1,0 +1,10 @@
+{:+ {:app {}
+
+     :editor {"alt-w" [:editor.watch.watch-selection]
+              "alt-shift-w" [:editor.watch.unwatch]
+              "alt-f" [:paredit.grow.right]
+              "alt-d" [:paredit.grow.left]
+              "alt-s" [:paredit.shrink.right]
+              "alt-a" [:paredit.shrink.left]
+              "alt-k" [:paredit.select.parent]
+              "alt-t alt-w" [:rolex.watch.values-over-time]}}}

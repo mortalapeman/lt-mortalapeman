@@ -1,4 +1,5 @@
 {:+ {:app [(:lt.objs.plugins/load-js "mortalapeman_compiled.js")
+           (:lt.objs.plugins/load-keymap "mortalapeman.keymap")
            ;; Connect to Light Table on startup
            (:lt.objs.app/run-post-init :app.connect-to-lt-ui)]
      :sidebar.workspace [:lt.plugins.mortalapeman/sidebar-menu-items]
