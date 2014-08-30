@@ -7,4 +7,9 @@
               "alt-s" [:paredit.shrink.right]
               "alt-a" [:paredit.shrink.left]
               "alt-k" [:paredit.select.parent]
-              "alt-t alt-w" [:rolex.watch.values-over-time]}}}
+              "alt-t alt-w" [:rolex.watch.values-over-time]
+              "alt-t alt-r" [:workspace.show]
+              "ctrl-e ctrl-d" [:editor.select-all
+                               :smart-indent-selection]
+              "ctrl-e ctrl-f" [:smart-indent-selection]
+              "ctrl-k ctrl-c" [:toggle-comment-selection]}}}
