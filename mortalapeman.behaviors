@@ -4,6 +4,7 @@
            (:lt.objs.app/run-post-init :app.connect-to-lt-ui)]
      :sidebar.workspace [:lt.plugins.mortalapeman/sidebar-menu-items]
      :tab-label [:lt.plugins.mortalapeman/tab-menu-items]
-     :workspace.folder [:lt.plugins.mortalapeman/subfolder-menu]}
+     :workspace.folder [:lt.plugins.mortalapeman/subfolder-menu]
+     :tabset.tab [:lt.plugins.mortalapeman/tabset.tab.close-when-empty]}
  ;; Remove main menu as it causes problems on Windows machine's with alt shortcuts
  :- {:app [:lt.objs.menu/create-menu]}}

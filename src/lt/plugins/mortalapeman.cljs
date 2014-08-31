@@ -98,6 +98,22 @@
                              :order 6
                              :click (fn [] (cmd/exec! :tabs.close-all))})))
 
+(defn ed->tabset [this]
+  (:lt.objs.tabs/tabset @this))
+
+(defn tabset-empty? [this]
+  (->> @(ed->tabset this)
+       :objs
+       (filter (comp not #{this}))
+       empty?))
+
+
+(behavior ::tabset.tab.close-when-empty
+          :triggers #{:close}
+          :reaction (fn [this]
+                      (when (tabset-empty? this)
+                        (tabs/rem-tabset (ed->tabset this)))))
+
 
 
 (cmd/command {:command :tabset.close-other-tabs
