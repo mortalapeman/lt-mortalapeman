@@ -3,8 +3,56 @@
             [lt.objs.context :as ctx]
             [lt.objs.tabs :as tabs]
             [lt.objs.clients.local :as local]
-            [lt.objs.command :as cmd])
+            [lt.objs.command :as cmd]
+            [crate.binding :refer [bound]])
   (:require-macros [lt.macros :refer [defui behavior]]))
+
+;;****************************************************
+;; Development
+;;****************************************************
+
+(behavior ::dev-playground.close
+          :triggers #{:close}
+          :reaction (fn [this]
+                      (tabs/rem! this)))
+
+(behavior ::dev-playground.set!
+          :triggers #{:set!}
+          :reaction (fn [this obj]
+                      (object/merge! this {:obj obj})))
+
+(behavior ::dev-playground.open
+          :triggers #{:open}
+          :reaction (fn [this]
+                      (tabs/add-or-focus! this)))
+
+(object/object* ::dev-playground
+                :behaviors [::dev-playground.close
+                            ::dev-playground.open
+                            ::dev-playground.set!]
+                :obj nil
+                :name "Dev playground"
+                :init (fn [this]
+                        [:div.dev-playground
+                         (bound this
+                                (fn []
+                                  (when-let [obj (:obj @this)]
+                                    (object/->content obj))))]))
+
+(def dev-playground (object/create ::dev-playground))
+
+
+(cmd/command {:command :dev-playground.set!
+              :hidden true
+              :desc "Sets the current object for display"
+              :exec (fn [obj]
+                      (object/raise dev-playground :set! obj)
+                      (object/raise dev-playground :open))})
+
+;;****************************************************
+;; Workspace
+;;****************************************************
+
 
 (behavior ::sidebar-menu-items
           :triggers #{:menu-items}
@@ -12,6 +60,25 @@
                       (conj items {:label "Create new workspace"
                                    :click (fn []
                                             (cmd/exec! :workspace.new))})))
+
+(defn open-gnome-terminal [path]
+  (let [cp (js/require "child_process")]
+    (.spawn cp "gnome-terminal" #js [(str "--working-directory=" path)])))
+
+(behavior ::subfolder-menu
+          :triggers #{:menu-items}
+          :reaction (fn [this items]
+                      (conj items
+                            {:label "Open Terminal Here"
+                             :order 7
+                             :click (fn []
+                                      (condp = process.platform
+                                        "linux" (open-gnome-terminal (:path @this))))})))
+
+
+;;****************************************************
+;; Tabs
+;;****************************************************
 
 (behavior ::tab-menu-items
           :triggers #{:menu+}
@@ -31,19 +98,6 @@
                              :order 6
                              :click (fn [] (cmd/exec! :tabs.close-all))})))
 
-(defn open-gnome-terminal [path]
-  (let [cp (js/require "child_process")]
-    (.spawn cp "gnome-terminal" #js [(str "--working-directory=" path)])))
-
-(behavior ::subfolder-menu
-          :triggers #{:menu-items}
-          :reaction (fn [this items]
-                      (conj items
-                            {:label "Open Terminal Here"
-                             :order 7
-                             :click (fn []
-                                      (condp = process.platform
-                                        "linux" (open-gnome-terminal (:path @this))))})))
 
 
 (cmd/command {:command :tabset.close-other-tabs

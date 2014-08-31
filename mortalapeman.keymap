@@ -12,4 +12,6 @@
               "ctrl-e ctrl-d" [:editor.select-all
                                :smart-indent-selection]
               "ctrl-e ctrl-f" [:smart-indent-selection]
-              "ctrl-k ctrl-c" [:toggle-comment-selection]}}}
+              "ctrl-k ctrl-c" [:toggle-comment-selection]
+              "f6" [:build]
+              "f1" [:dev-inspector]}}}
