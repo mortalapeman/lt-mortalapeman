@@ -9,8 +9,11 @@
               "alt-k" [:paredit.select.parent]
               "alt-t alt-w" [:rolex.watch.values-over-time]
               "alt-t alt-r" [:workspace.show]
-              "ctrl-e ctrl-d" [:editor.select-all
-                               :smart-indent-selection]
+              ;; Format document
+              "ctrl-e ctrl-d" [:editor.capture-position
+                               :editor.select-all
+                               :smart-indent-selection
+                               :editor.reset-position]
               "ctrl-e ctrl-f" [:smart-indent-selection]
               "ctrl-k ctrl-c" [:toggle-comment-selection]
               "f6" [:build]

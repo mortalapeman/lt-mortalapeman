@@ -2,6 +2,8 @@
   (:require [lt.object :as object]
             [lt.objs.context :as ctx]
             [lt.objs.tabs :as tabs]
+            [lt.objs.editor :as ed]
+            [lt.objs.editor.pool :as pool]
             [lt.objs.clients.local :as local]
             [lt.objs.command :as cmd]
             [crate.binding :refer [bound]])
@@ -48,6 +50,11 @@
               :exec (fn [obj]
                       (object/raise dev-playground :set! obj)
                       (object/raise dev-playground :open))})
+
+(cmd/command {:command :app.connect-to-lt-ui
+              :desc "Connect: Connect to Light Table UI"
+              :exec (fn []
+                      (local/init))})
 
 ;;****************************************************
 ;; Workspace
@@ -151,7 +158,30 @@
                           (tabs/rem-tabset x))))})
 
 
-(cmd/command {:command :app.connect-to-lt-ui
-              :desc "Connect: Connect to Light Table UI"
+;;****************************************************
+;; Editor
+;;****************************************************
+
+(behavior ::editor.capture-position
+          :triggers #{:position.capture!}
+          :reaction (fn [this]
+                      (object/merge! this {::previous-pos (ed/->cursor this)})))
+
+(behavior ::editor.reset-position
+          :triggers #{:position.reset!}
+          :reaction (fn [this]
+                      (ed/move-cursor this (::previous-pos @this))
+                      (swap! this dissoc ::previous-pos)))
+
+(cmd/command {:command :editor.capture-position
+              :desc "Editor: Save current cursor position"
               :exec (fn []
-                      (local/init))})
+                      (object/raise (pool/last-active) :position.capture!))})
+
+(cmd/command {:command :editor.reset-position
+              :desc "Editor: Reset cursor to previously captured position"
+              :exec (fn []
+                      (object/raise (pool/last-active)
+                                    :position.reset!))})
+
+
