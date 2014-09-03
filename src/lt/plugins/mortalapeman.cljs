@@ -118,10 +118,11 @@
   (:lt.objs.tabs/tabset @this))
 
 (defn tabset-empty? [this]
-  (->> @(ed->tabset this)
-       :objs
-       (filter (comp not #{this}))
-       empty?))
+  (when-let [tabset (ed->tabset this)]
+    (->> @tabset
+         :objs
+         (filter (comp not #{this}))
+         empty?)))
 
 
 (behavior ::tabset.tab.close-when-empty
