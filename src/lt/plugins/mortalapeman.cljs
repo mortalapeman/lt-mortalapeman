@@ -72,6 +72,10 @@
   (let [cp (js/require "child_process")]
     (.spawn cp "gnome-terminal" #js [(str "--working-directory=" path)])))
 
+(defn open-file-manager [path]
+  (let [cp (js/require "child_process")]
+    (.spawn cp "nautilus" #js [path])))
+
 (behavior ::subfolder-menu
           :triggers #{:menu-items}
           :reaction (fn [this items]
@@ -80,7 +84,12 @@
                              :order 7
                              :click (fn []
                                       (condp = process.platform
-                                        "linux" (open-gnome-terminal (:path @this))))})))
+                                        "linux" (open-gnome-terminal (:path @this))))}
+                            {:label "Open in file manager"
+                             :order 8
+                             :click (fn []
+                                      (condp = process.platform
+                                        "linux" (open-file-manager (:path @this))))})))
 
 
 ;;****************************************************
@@ -117,6 +126,7 @@
 
 (behavior ::tabset.tab.close-when-empty
           :triggers #{:close}
+          :desc "Closes the active tabset of the closed tab when tabset is empty."
           :reaction (fn [this]
                       (when (tabset-empty? this)
                         (tabs/rem-tabset (ed->tabset this)))))
